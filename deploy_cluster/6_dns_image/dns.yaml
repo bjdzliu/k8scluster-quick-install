@@ -1,0 +1,161 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    k8s-app: kube-dns
+  name: kube-dns
+  namespace: kube-system
+  selfLink: /apis/extensions/v1beta1/namespaces/kube-system/deployments/kube-dns
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      k8s-app: kube-dns
+  strategy:
+    rollingUpdate:
+      maxSurge: 10%
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+      creationTimestamp: null
+      labels:
+        k8s-app: kube-dns
+    spec:
+      containers:
+      - args:
+        - --domain=cibfintech.com.
+        - --dns-port=10053
+        - --config-dir=/kube-dns-config
+        - --v=2
+        env:
+        - name: PROMETHEUS_PORT
+          value: "10055"
+        image: gcr.io/google_containers/k8s-dns-kube-dns-s390x:1.14.4
+        imagePullPolicy: Never
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /healthcheck/kubedns
+            port: 10054
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: kubedns
+        ports:
+        - containerPort: 10053
+          name: dns-local
+          protocol: UDP
+        - containerPort: 10053
+          name: dns-tcp-local
+          protocol: TCP
+        - containerPort: 10055
+          name: metrics
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /readiness
+            port: 8081
+            scheme: HTTP
+          initialDelaySeconds: 3
+          timeoutSeconds: 5
+        resources:
+          limits:
+            memory: 270Mi
+          requests:
+            cpu: 200m
+            memory: 100Mi
+        volumeMounts:
+        - mountPath: /kube-dns-config
+          name: kube-dns-config
+      - args:
+        - -v=2
+        - -logtostderr
+        - -configDir=/etc/k8s/dns/dnsmasq-nanny
+        - -restartDnsmasq=true
+        - --
+        - -k
+        - --log-queries
+        - --cache-size=10000
+        - --log-facility=-
+        - --server=/cibfintech.com/127.0.0.1#10053
+        - --server=/in-addr.arpa/127.0.0.1#10053
+        - --dns-forward-max=1000
+        - --server=/ip6.arpa/127.0.0.1#10053
+        image: gcr.io/google_containers/k8s-dns-dnsmasq-nanny-s390x:1.14.4
+        imagePullPolicy: Never
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /healthcheck/dnsmasq
+            port: 10054
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: dnsmasq
+        ports:
+        - containerPort: 53
+          name: dns
+          protocol: UDP
+        - containerPort: 53
+          name: dns-tcp
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 250m
+            memory: 800Mi
+        volumeMounts:
+        - mountPath: /etc/k8s/dns/dnsmasq-nanny
+          name: kube-dns-config
+      - args:
+        - --v=2
+        - --logtostderr
+        - --probe=kubedns,127.0.0.1:10053,kubernetes.default.svc.cibfintech.com,5,A
+        - --probe=dnsmasq,127.0.0.1:53,kubernetes.default.svc.cibfintech.com,5,A
+        image: gcr.io/google_containers/k8s-dns-sidecar-s390x:1.14.4
+        imagePullPolicy: Never
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /metrics
+            port: 10054
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: sidecar
+        ports:
+        - containerPort: 10054
+          name: metrics
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 10m
+            memory: 20Mi
+      dnsPolicy: Default
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      serviceAccount: kube-dns
+      serviceAccountName: kube-dns
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+      - key: CriticalAddonsOnly
+        operator: Exists
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: kube-dns
+          optional: true
+        name: kube-dns-config
+
+

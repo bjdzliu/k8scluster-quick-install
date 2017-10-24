@@ -1,0 +1,214 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-k8s-rules
+  namespace: monitoring
+  labels:
+    role: prometheus-rulefiles
+    prometheus: k8s
+data:
+  BaaS.rules: |+
+
+    ### Cluster resources ###
+
+    BaaS_cluster_CPU_use:percent =
+      100 * sum by (cluster) (
+        rate(node_cpu{mode!="idle"}[5m])
+      ) / sum by (cluster) (
+        machine_cpu_cores
+      )
+
+    BaaS_cluster_memory_use:percent =
+      100 * (sum(node_memory_MemTotal)
+        - sum(node_memory_MemFree)
+        - sum(node_memory_Buffers)
+        - sum(node_memory_Cached))
+        / sum(node_memory_MemTotal)
+
+    BaaS_cluster_disk_free_total:gb =
+      sum by (cluster)(node_filesystem_avail{device!~'rootfs',mountpoint="/"}
+        /1024
+        /1024
+        /1024)
+
+    BaaS_cluster_disk_io_time_ms =
+      avg by (cluster)(max(irate(node_disk_io_time_ms[5m])))
+
+    BaaS_cluster_network_receive_total:bytes =
+      sum by (cluster)(node_network_receive_bytes{device="ens33"})
+
+    BaaS_cluster_network_transmit_total:bytes =
+      sum by (cluster)(node_network_transmit_bytes{device="ens33"})
+
+
+    ### Node resources ###
+
+    BaaS_node_CPU_use:percent =
+      100 * sum by (node) (
+        rate(node_cpu{mode!="idle"}[5m])
+      ) / sum by (node) (
+        machine_cpu_cores
+      )
+
+    BaaS_node_memory_use:percent =
+      node_memory_MemTotal - node_memory_MemFree - node_memory_Buffers - node_memory_Cached
+
+    BaaS_node_disk_free_total:gb =
+      node_filesystem_avail{device!~'rootfs',mountpoint="/"}
+      /1024
+      /1024
+      /1024
+
+    BaaS_node_disk_io_time_ms =
+      max(irate(node_disk_io_time_ms[5m]))
+
+    BaaS_node_network_receive_total:bytes =
+      node_network_receive_bytes{device="ens33"}
+
+    BaaS_node_network_transmit_total:bytes =
+      node_network_transmit_bytes{device="ens33"}
+
+
+    ### Deployment ###
+
+    ### Pod ###
+
+    ### Container ###
+
+
+    ### BaaS Alert ###
+
+    ALERT BaaSClusterCPUOverload
+      IF BaaS_cluster_CPU_use:percent > 10
+      LABELS {
+        service = "BaaS",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "BaaS cluster is close to cpu limit",
+        description = "BaaS cluster is taking up too much cpu, close to the limit of 10%",
+      }
+
+    ALERT BaaSClusterMemoryOverload
+      IF BaaS_cluster_memory_use:percent > 50
+      LABELS {
+        service = "BaaS",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "BaaS cluster is close to memory limit",
+        description = "BaaS cluster is taking up too much memory, close to the limit of 50%",
+      }
+
+    ALERT BaaSClusterDiskUsageTooMuch
+      IF BaaS_cluster_disk_free_total:gb < 500
+      LABELS {
+        service = "BaaS",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "BaaS cluster is taking up too much disk",
+        description = "BaaS cluster is taking up too much disk, disk space is less than 500Gi",
+      }
+
+    ALERT BaaSClusterDiskOverload
+      IF BaaS_cluster_disk_io_time_ms > 10
+      LABELS {
+        service = "BaaS",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "BaaS cluster is close to disk limit",
+        description = "BaaS cluster is taking up too much disk, disk I/O is less than 10ms",
+      }
+
+    ALERT BaaSClusterNetworkReceiveTooMuch
+      IF BaaS_cluster_network_receive_total:bytes > 1000
+      LABELS {
+        service = "BaaS",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "BaaS cluster is close to network receive limit",
+        description = "BaaS cluster havs received too much, network receive is more than 1000byte",
+      }
+
+    ALERT BaaSClusterNetworkTransmitTooMuch
+      IF BaaS_cluster_network_transmit_total:bytes > 1000
+      LABELS {
+        service = "BaaS",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "BaaS cluster is close to network transmit limit",
+        description = "BaaS cluster havs transmited too much, network transmit is more than 1000byte",
+      }
+
+
+
+    ALERT BaaSNodeCPUOverload
+      IF BaaS_node_CPU_use:percent > 10
+      LABELS {
+        service = "BaaS",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "BaaS node is close to cpu limit",
+        description = "BaaS node is taking up too much cpu, close to the limit of 10%",
+      }
+
+    ALERT BaaSNodeMemoryOverload
+      IF BaaS_node_memory_use:percent > 50
+      LABELS {
+        service = "BaaS",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "BaaS node is close to memory limit",
+        description = "BaaS node is taking up too much memory, close to the limit of 50%",
+      }
+
+    ALERT BaaSNodeDiskUsageTooMuch
+      IF BaaS_node_disk_free_total:gb < 500
+      LABELS {
+        service = "BaaS",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "BaaS node is taking up too much disk",
+        description = "BaaS node is taking up too much disk, disk space is less than 500Gi",
+      }
+
+    ALERT BaaSNodeDiskOverload
+      IF BaaS_node_disk_io_time_ms > 10
+      LABELS {
+        service = "BaaS",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "BaaS node is close to disk limit",
+        description = "BaaS node is taking up too much disk, disk I/O is less than 10ms",
+      }
+
+    ALERT BaaSNodeNetworkReceiveTooMuch
+      IF BaaS_node_network_receive_total:bytes > 1000
+      LABELS {
+        service = "BaaS",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "BaaS node is close to network receive limit",
+        description = "BaaS node havs received too much, network receive is more than 1000byte",
+      }
+
+    ALERT BaaSNodeNetworkTransmitTooMuch
+      IF BaaS_node_network_transmit_total:bytes > 1000
+      LABELS {
+        service = "BaaS",
+        severity = "warning",
+      }
+      ANNOTATIONS {
+        summary = "BaaS node is close to network transmit limit",
+        description = "BaaS node havs transmited too much, network transmit is more than 1000byte",
+      }
+

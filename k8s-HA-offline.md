@@ -1,17 +1,16 @@
 
-[TOC]
 # IP arrangement
-There are four machines, three of them are master node, the last one  is worker node.
+There are four machines, three of them are maste  node, the last one  is worker node.  
 Must prepare a virtual IP in your environment.
-your ip arrangement might like below:
-VIP                 172.16.30.178
-master1      172.16.30.176
-master2      172.16.30.179
-master3      172.16.30.174
-worker        172.16.30.173
+your ip arrangement might like below:  
+VIP                 172.16.30.178  
+master1      172.16.30.176  
+master2      172.16.30.179  
+master3      172.16.30.174  
+worker        172.16.30.173  
 
 Operate bash command  on every master node:
-
+```
 cat <<EOF >> /etc/hosts
 172.16.30.176 master1
 172.16.30.179 master2
@@ -26,7 +25,7 @@ cat <<EOF >> /etc/hosts
 172.16.30.174 k8smaster3.baasclusteronz.local
 172.16.30.178     k8smaster0.baasclusteronz.local
 EOF
-
+```
 
 # Prepare installation package on every master node
 operate on master1 , master2  and master3:
@@ -320,7 +319,7 @@ operate on every master node:
 
 # Load docker image on every master node
 
-Operate on every master  node
+Operate on every master  node,download image from internet and load
 ```
 docker load < ~/deploy_cluster/docker_images/dashboard.tar
 docker load < ~/deploy_cluster/docker_images/pause-s390x.tar

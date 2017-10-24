@@ -1,0 +1,11 @@
+server 127.0.0.1
+debug yes
+zone lan.
+update delete ca0.lan. 
+update delete ca1.lan. 
+update delete orderer0.lan. 
+update delete peer0.lan. 
+update delete peer1.lan. 
+update delete peer2.lan. 
+update delete peer3.lan.
+send

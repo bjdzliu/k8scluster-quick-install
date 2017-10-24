@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-main
+  namespace: monitoring
+data:
+  alertmanager.yaml: |-
+     global:
+       smtp_smarthost: {smtpserver}
+       smtp_from: 'alertmanager@alertmanager146.org'
+       smtp_auth_username: 'username@example.com'
+       smtp_auth_password: 'userpassword'
+
+     route:
+       receiver: 'service-mail'
+       group_by: ['alertname', 'cluster']
+       group_wait: 30s
+       group_interval: 1m
+       repeat_interval: 2m
+       
+       routes:
+       - match_re:
+          service: BaaS*
+         receiver: 'service-mail'
+
+     inhibit_rules:
+     - source_match:
+         severity: 'critical'
+       target_match:
+         severity: 'warning'
+       equal: ['alertname']
+
+
+     receivers:
+     - name : 'service-mail'
+       slack_configs:
+       - api_url: {url}
+         channel: {channelname}
+
+
+
